@@ -16,6 +16,7 @@
     "@react-navigation/stack": "^7.2.10",
     "react": "19.0.0",
     "react-native": "0.79.0",
+    "react-native-app-auth": "^8.0.2",
     "react-native-authsignal": "1.1.8",
     "react-native-gesture-handler": "^2.25.0",
     "react-native-get-random-values": "^1.11.0",

@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {ActivityIndicator, StyleSheet, Text, TouchableOpacity} from 'react-native';
+import {ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 
 interface Props {
   children: any;
@@ -28,6 +28,36 @@ export const Button = ({children, disabled, theme = 'primary', onPress}: Props) 
         <ActivityIndicator color={theme === 'primary' ? 'white' : blue} />
       ) : (
         <Text style={[styles.text, theme === 'primary' ? styles.textPrimary : styles.textSecondary]}>{children}</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+interface GoogleButtonProps {
+  onPress: () => Promise<void> | void;
+}
+
+export const GoogleButton = ({onPress}: GoogleButtonProps) => {
+  const [loading, setLoading] = useState(false);
+
+  return (
+    <TouchableOpacity
+      style={[styles.background, styles.backgroundSecondary]}
+      disabled={loading}
+      onPress={async () => {
+        setLoading(true);
+
+        await onPress();
+
+        setLoading(false);
+      }}>
+      {loading ? (
+        <ActivityIndicator color={'black'} />
+      ) : (
+        <View style={styles.row}>
+          <Image style={styles.icon} resizeMode={'contain'} source={require('../images/google-icon.png')} />
+          <Text style={[styles.text, styles.textSecondary]}>Continue with Google</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -64,5 +94,14 @@ const styles = StyleSheet.create({
   },
   textSecondary: {
     color: '#525EEA',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    width: 20,
+    height: 20,
+    marginRight: 10,
   },
 });

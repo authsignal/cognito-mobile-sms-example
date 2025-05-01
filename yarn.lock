@@ -6354,7 +6354,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"invariant@npm:^2.2.4":
+"invariant@npm:2.2.4, invariant@npm:^2.2.4":
   version: 2.2.4
   resolution: "invariant@npm:2.2.4"
   dependencies:
@@ -8737,6 +8737,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-native-app-auth@npm:^8.0.2":
+  version: 8.0.2
+  resolution: "react-native-app-auth@npm:8.0.2"
+  dependencies:
+    invariant: 2.2.4
+    react-native-base64: 0.0.2
+  peerDependencies:
+    react-native: ">=0.63.0"
+  checksum: 12fba528443f080a89ab36a7eca23e31d1e6f700ac1b5dd4361c20fa28c5029b0d9ac6451b9338de08f32f2df4ac305cee1d2117fde09116c40219e776f38b72
+  languageName: node
+  linkType: hard
+
 "react-native-authsignal@npm:1.1.8":
   version: 1.1.8
   resolution: "react-native-authsignal@npm:1.1.8"
@@ -8744,6 +8756,13 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 425619bc8cfa353384c8f8c6e3ed209ccc87dc5363c6e96a9e2c9e49de11864555729895f5d64a28aa1e3d06c382640ae60b73bf3b37853dc489292efb99d7d0
+  languageName: node
+  linkType: hard
+
+"react-native-base64@npm:0.0.2":
+  version: 0.0.2
+  resolution: "react-native-base64@npm:0.0.2"
+  checksum: 696f6cad0e3ce26437275bcd791becaf597300d351a3ab2d7084fd42a177731bb9ab1e490534397ed35de4cd2a5a4385ee8d49bf5846069101b5ada98f132d23
   languageName: node
   linkType: hard
 
@@ -9477,6 +9496,7 @@ __metadata:
     prettier: 2.8.8
     react: 19.0.0
     react-native: 0.79.0
+    react-native-app-auth: ^8.0.2
     react-native-authsignal: 1.1.8
     react-native-gesture-handler: ^2.25.0
     react-native-get-random-values: ^1.11.0

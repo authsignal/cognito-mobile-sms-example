@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {Alert, Image, SafeAreaView, StyleSheet, Text, TextInput} from 'react-native';
 
-import {Button} from './Button';
+import {Button, GoogleButton} from './Button';
 import {authsignal} from './authsignal';
 import {signUp, initiateAuth, respondToAuthChallenge, getUserAttributes} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
@@ -102,6 +102,8 @@ export function SignInScreen({navigation}: any) {
         }}>
         Continue
       </Button>
+      <Text style={styles.or}>OR</Text>
+      <GoogleButton onPress={() => {}} />
     </SafeAreaView>
   );
 }
@@ -137,6 +139,9 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '100%',
+    marginBottom: 20,
+  },
+  or: {
     marginBottom: 20,
   },
 });
