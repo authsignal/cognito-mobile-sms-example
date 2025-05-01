@@ -6,6 +6,7 @@ import {authsignal} from './authsignal';
 import {signUp, initiateAuth, respondToAuthChallenge, getUserAttributes} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
 import {useAppContext} from './context';
+import {signInWithGoogle} from './google';
 
 export function SignInScreen({navigation}: any) {
   const {setUsername, setVerifiedEmail, setNames} = useAppContext();
@@ -103,7 +104,13 @@ export function SignInScreen({navigation}: any) {
         Continue
       </Button>
       <Text style={styles.or}>OR</Text>
-      <GoogleButton onPress={() => {}} />
+      <GoogleButton
+        onPress={async () => {
+          const {accessToken} = await signInWithGoogle();
+
+          console.log('Google access token:', accessToken);
+        }}
+      />
     </SafeAreaView>
   );
 }
