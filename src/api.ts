@@ -1,12 +1,12 @@
 import {API_GATEWAY_ID, AWS_REGION} from '@env';
 import {getAccessToken} from './cognito';
 
-const url = `https://${API_GATEWAY_ID}.execute-api.${AWS_REGION}.amazonaws.com/authenticators`;
+const url = `https://${API_GATEWAY_ID}.execute-api.${AWS_REGION}.amazonaws.com`;
 
 export async function addAuthenticator(): Promise<string> {
   const accessToken = await getAccessToken();
 
-  const response = await fetch(url, {
+  const response = await fetch(`${url}/authenticators`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -21,10 +21,10 @@ interface VerifyEmailInput {
   token: string;
 }
 
-export async function verifyEmail(input: VerifyEmailInput): Promise<void> {
+export async function verifyEmail(input: VerifyEmailInput) {
   const accessToken = await getAccessToken();
 
-  const response = await fetch(`${url}/email/verify`, {
+  const response = await fetch(`${url}/authenticators/email/verify`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -35,4 +35,17 @@ export async function verifyEmail(input: VerifyEmailInput): Promise<void> {
   if (response?.error) {
     throw new Error(`Error verifying email: ${response.error}`);
   }
+}
+
+export async function initAuth(phoneNumber: string) {
+  const response = await fetch(`${url}/init`, {
+    method: 'POST',
+    body: JSON.stringify({phoneNumber}),
+  }).then(res => res.json());
+
+  if (response?.error) {
+    throw new Error(`Google sign-in error: ${response.error}`);
+  }
+
+  return response;
 }

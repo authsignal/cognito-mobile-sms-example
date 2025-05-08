@@ -5,7 +5,6 @@ import {
   GetUserCommand,
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
-  SignUpCommand,
   UpdateUserAttributesCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {AWS_REGION, USER_POOL_CLIENT_ID} from '@env';
@@ -13,34 +12,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const cognito = new CognitoIdentityProviderClient({region: AWS_REGION});
 
-interface SignUpInput {
-  username: string;
-  phoneNumber: string;
-}
-
-export async function signUp({username, phoneNumber}: SignUpInput): Promise<void> {
-  const signUpCommand = new SignUpCommand({
-    ClientId: USER_POOL_CLIENT_ID,
-    Username: username,
-    Password: Math.random().toString(36).slice(-16) + 'X', // Dummy value - never used
-    UserAttributes: [
-      {
-        Name: 'phone_number',
-        Value: phoneNumber,
-      },
-    ],
-  });
-
-  await cognito.send(signUpCommand);
-}
-
 interface InitiateAuthResponse {
   session: any;
-  token?: string;
+}
+
+interface InitiateSmsAuthResponse extends InitiateAuthResponse {
+  token: string;
   isEnrolled: boolean;
 }
 
-export async function initiateAuth(username: string): Promise<InitiateAuthResponse> {
+async function initiateAuth(username: string) {
   const initiateAuthCommand = new InitiateAuthCommand({
     ClientId: USER_POOL_CLIENT_ID,
     AuthFlow: AuthFlowType.CUSTOM_AUTH,
@@ -49,26 +30,17 @@ export async function initiateAuth(username: string): Promise<InitiateAuthRespon
     },
   });
 
-  const initiateAuthOutput = await cognito.send(initiateAuthCommand);
-
-  if (!initiateAuthOutput.Session) {
-    throw new Error('Cognito could not start custom auth flow');
-  }
-
-  return {
-    session: initiateAuthOutput.Session,
-    token: initiateAuthOutput.ChallengeParameters?.token,
-    isEnrolled: initiateAuthOutput.ChallengeParameters?.isEnrolled === 'true',
-  };
+  return await cognito.send(initiateAuthCommand);
 }
 
-interface CompleteSignInInput {
+interface RespondToAuthChallengeInput {
   session: any;
   username: string;
   answer: string;
+  clientMetadata?: Record<string, string>;
 }
 
-export async function respondToAuthChallenge({session, username, answer}: CompleteSignInInput): Promise<void> {
+export async function respondToAuthChallenge({session, username, answer, clientMetadata}: RespondToAuthChallengeInput) {
   const respondToAuthChallengeCommand = new RespondToAuthChallengeCommand({
     ClientId: USER_POOL_CLIENT_ID,
     ChallengeName: ChallengeNameType.CUSTOM_CHALLENGE,
@@ -77,11 +49,83 @@ export async function respondToAuthChallenge({session, username, answer}: Comple
       USERNAME: username,
       ANSWER: answer,
     },
+    ClientMetadata: clientMetadata,
   });
 
-  const respondToAuthChallengeOutput = await cognito.send(respondToAuthChallengeCommand);
+  return await cognito.send(respondToAuthChallengeCommand);
+}
+
+export async function initiateSmsAuth(username: string): Promise<InitiateSmsAuthResponse> {
+  const provideAuthParamsOutput = await initiateAuth(username);
+
+  const challengeResponse = await respondToAuthChallenge({
+    session: provideAuthParamsOutput.Session,
+    username,
+    answer: '__dummy__',
+    clientMetadata: {signInMethod: 'SMS'},
+  });
+
+  const token = challengeResponse.ChallengeParameters?.token;
+  const isEnrolled = challengeResponse.ChallengeParameters?.isEnrolled === 'true';
+  const session = challengeResponse.Session;
+
+  if (!token) {
+    throw new Error('No Authsignal token returned from Cognito');
+  }
+
+  return {
+    session,
+    token,
+    isEnrolled,
+  };
+}
+
+export async function respondToSmsChallenge(input: RespondToAuthChallengeInput): Promise<void> {
+  const respondToAuthChallengeOutput = await respondToAuthChallenge({
+    ...input,
+    clientMetadata: {signInMethod: 'SMS'},
+  });
 
   const accessToken = respondToAuthChallengeOutput.AuthenticationResult?.AccessToken;
+
+  if (!accessToken) {
+    throw new Error('Cognito did not return an access token');
+  }
+
+  await AsyncStorage.setItem('@access_token', accessToken);
+}
+
+interface PasskeyAuthInput {
+  username?: string;
+  token?: string;
+}
+
+export async function handlePasskeyAuth({username, token}: PasskeyAuthInput): Promise<void> {
+  if (!username || !token) {
+    throw new Error('Username and token are required for passkey auth');
+  }
+
+  const provideAuthParamsOutput = await initiateAuth(username);
+
+  const clientMetadata = {signInMethod: 'PASSKEY'};
+
+  // Provide auth params
+  const authParamsOutput = await respondToAuthChallenge({
+    session: provideAuthParamsOutput.Session,
+    username,
+    clientMetadata,
+    answer: '__dummy__',
+  });
+
+  // Verify passkey challenge with token
+  const passkeyChallengeOutput = await respondToAuthChallenge({
+    session: authParamsOutput.Session,
+    username,
+    clientMetadata,
+    answer: token,
+  });
+
+  const accessToken = passkeyChallengeOutput.AuthenticationResult?.AccessToken;
 
   if (!accessToken) {
     throw new Error('Cognito did not return an access token');

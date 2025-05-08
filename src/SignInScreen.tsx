@@ -3,10 +3,11 @@ import {Alert, Image, SafeAreaView, StyleSheet, Text, TextInput} from 'react-nat
 
 import {Button, GoogleButton} from './Button';
 import {authsignal} from './authsignal';
-import {signUp, initiateAuth, respondToAuthChallenge, getUserAttributes} from './cognito';
+import {initiateSmsAuth, handlePasskeyAuth, getUserAttributes} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
 import {useAppContext} from './context';
 import {signInWithGoogle} from './google';
+import {initAuth} from './api';
 
 export function SignInScreen({navigation}: any) {
   const {setUsername, setVerifiedEmail, setNames} = useAppContext();
@@ -15,22 +16,14 @@ export function SignInScreen({navigation}: any) {
 
   useEffect(() => {
     async function signInWithPasskey() {
-      const {data, errorCode} = await authsignal.passkey.signIn({action: 'cognitoAuth'});
+      const {data, errorCode} = await authsignal.passkey.signIn({action: 'cognitoPasskeyAuth'});
 
-      if (errorCode === ErrorCode.user_canceled || errorCode === ErrorCode.no_credential) {
+      if (errorCode === ErrorCode.user_canceled || errorCode === ErrorCode.no_credential || !data) {
         return;
       }
-
-      if (!data || !data.token || !data.username) {
-        return;
-      }
-
-      const {username} = data;
 
       try {
-        const {session} = await initiateAuth(username);
-
-        await respondToAuthChallenge({session, username, answer: data.token});
+        await handlePasskeyAuth(data);
 
         const attrs = await getUserAttributes();
 
@@ -71,22 +64,10 @@ export function SignInScreen({navigation}: any) {
       />
       <Button
         onPress={async () => {
-          const username = phoneNumber;
+          const {username} = await initAuth(phoneNumber);
 
-          // Sign up user in Cognito
-          // If they already exist then ignore error and continue
           try {
-            await signUp({username, phoneNumber});
-          } catch (ex) {
-            if (ex instanceof Error && ex.name !== 'UsernameExistsException') {
-              return Alert.alert('Error', ex.message);
-            }
-          }
-
-          // Start custom auth sign-in flow
-          // This will invoke the Create Auth Challenge lambda
-          try {
-            const {session, token, isEnrolled} = await initiateAuth(username);
+            const {session, token, isEnrolled} = await initiateSmsAuth(username);
 
             if (!token) {
               throw new Error('No Authsignal token returned from Create Auth Challenge lambda');
@@ -94,7 +75,7 @@ export function SignInScreen({navigation}: any) {
 
             await authsignal.setToken(token);
 
-            navigation.navigate('VerifySms', {phoneNumber, isEnrolled, session});
+            navigation.navigate('VerifySms', {username, phoneNumber, isEnrolled, session});
           } catch (err) {
             if (err instanceof Error) {
               Alert.alert('Invalid credentials', err.message);

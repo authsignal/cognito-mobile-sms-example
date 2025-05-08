@@ -4,14 +4,14 @@ import {Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View
 import {Button} from './Button';
 import {authsignal} from './authsignal';
 import {useAppContext} from './context';
-import {respondToAuthChallenge, getUserAttributes} from './cognito';
+import {respondToSmsChallenge, getUserAttributes} from './cognito';
 
 export function VerifySmsScreen({route}: any) {
   const {setUsername, setVerifiedEmail, setNames} = useAppContext();
 
   const [code, setCode] = useState('');
 
-  const {phoneNumber, isEnrolled, session} = route.params;
+  const {username, phoneNumber, isEnrolled, session} = route.params;
 
   const sendSms = useCallback(async () => {
     if (isEnrolled) {
@@ -39,26 +39,30 @@ export function VerifySmsScreen({route}: any) {
       />
       <Button
         onPress={async () => {
-          const {data, error} = await authsignal.sms.verify({code});
+          try {
+            const {data, error} = await authsignal.sms.verify({code});
 
-          if (error || !data?.token) {
-            Alert.alert('Invalid code');
-          } else {
-            const username = phoneNumber;
+            if (error || !data?.token) {
+              Alert.alert('Invalid code');
+            } else {
+              await respondToSmsChallenge({session, username, answer: data.token});
 
-            await respondToAuthChallenge({session, username, answer: data.token});
+              const {email, emailVerified, givenName, familyName} = await getUserAttributes();
 
-            const {email, emailVerified, givenName, familyName} = await getUserAttributes();
+              if (email && emailVerified) {
+                setVerifiedEmail(email);
+              }
 
-            if (email && emailVerified) {
-              setVerifiedEmail(email);
+              if (givenName && familyName) {
+                setNames(givenName, familyName);
+              }
+
+              setUsername(username);
             }
-
-            if (givenName && familyName) {
-              setNames(givenName, familyName);
+          } catch (err) {
+            if (err instanceof Error) {
+              Alert.alert('Error', err.message);
             }
-
-            setUsername(username);
           }
         }}>
         Confirm
