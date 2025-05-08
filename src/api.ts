@@ -37,10 +37,15 @@ export async function verifyEmail(input: VerifyEmailInput) {
   }
 }
 
-export async function initAuth(phoneNumber: string) {
+interface InitAuthInput {
+  phoneNumber?: string;
+  googleIdToken?: string;
+}
+
+export async function initAuth(input: InitAuthInput) {
   const response = await fetch(`${url}/init`, {
     method: 'POST',
-    body: JSON.stringify({phoneNumber}),
+    body: JSON.stringify(input),
   }).then(res => res.json());
 
   if (response?.error) {

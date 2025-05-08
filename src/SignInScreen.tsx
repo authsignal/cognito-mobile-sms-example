@@ -3,7 +3,7 @@ import {Alert, Image, SafeAreaView, StyleSheet, Text, TextInput} from 'react-nat
 
 import {Button, GoogleButton} from './Button';
 import {authsignal} from './authsignal';
-import {initiateSmsAuth, handlePasskeyAuth, getUserAttributes} from './cognito';
+import {initiateSmsAuth, handlePasskeyAuth, getUserAttributes, handleGoogleAuth} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
 import {useAppContext} from './context';
 import {signInWithGoogle} from './google';
@@ -64,7 +64,7 @@ export function SignInScreen({navigation}: any) {
       />
       <Button
         onPress={async () => {
-          const {username} = await initAuth(phoneNumber);
+          const {username} = await initAuth({phoneNumber});
 
           try {
             const {session, token, isEnrolled} = await initiateSmsAuth(username);
@@ -87,9 +87,17 @@ export function SignInScreen({navigation}: any) {
       <Text style={styles.or}>OR</Text>
       <GoogleButton
         onPress={async () => {
-          const {accessToken} = await signInWithGoogle();
+          const {idToken} = await signInWithGoogle();
 
-          console.log('Google access token:', accessToken);
+          if (!idToken) {
+            return Alert.alert('Error', 'Google sign-in failed');
+          }
+
+          console.log('Google ID token:', idToken);
+
+          const {username} = await initAuth({googleIdToken: idToken});
+
+          await handleGoogleAuth({username, idToken});
         }}
       />
     </SafeAreaView>

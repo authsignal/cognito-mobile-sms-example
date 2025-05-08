@@ -134,6 +134,41 @@ export async function handlePasskeyAuth({username, token}: PasskeyAuthInput): Pr
   await AsyncStorage.setItem('@access_token', accessToken);
 }
 
+interface GoogleAuthInput {
+  username: string;
+  idToken: string;
+}
+
+export async function handleGoogleAuth({username, idToken}: GoogleAuthInput): Promise<void> {
+  const provideAuthParamsOutput = await initiateAuth(username);
+
+  const clientMetadata = {signInMethod: 'GOOGLE'};
+
+  // Provide auth params
+  const authParamsOutput = await respondToAuthChallenge({
+    session: provideAuthParamsOutput.Session,
+    username,
+    clientMetadata,
+    answer: '__dummy__',
+  });
+
+  // Verify google challenge with ID token
+  const googleChallengeOutput = await respondToAuthChallenge({
+    session: authParamsOutput.Session,
+    username,
+    clientMetadata,
+    answer: idToken,
+  });
+
+  const accessToken = googleChallengeOutput.AuthenticationResult?.AccessToken;
+
+  if (!accessToken) {
+    throw new Error('Cognito did not return an access token');
+  }
+
+  await AsyncStorage.setItem('@access_token', accessToken);
+}
+
 export async function getAccessToken(): Promise<string | null> {
   const accessToken = await AsyncStorage.getItem('@access_token');
 

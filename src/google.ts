@@ -1,4 +1,4 @@
-import {authorize, AuthorizeResult} from 'react-native-app-auth';
+import {authorize} from 'react-native-app-auth';
 
 const GOOGLE_OAUTH_APP_GUID = '216916146829-7sh24igudsprauvu1ad3lhfrpjpj16bp';
 
@@ -9,8 +9,7 @@ const config = {
   scopes: ['openid', 'profile', 'email'],
 };
 
-export const signInWithGoogle = async (): Promise<AuthorizeResult> => {
-  // Log in to get an authentication token
+export const signInWithGoogle = async () => {
   const authState = await authorize(config);
 
   return authState;
