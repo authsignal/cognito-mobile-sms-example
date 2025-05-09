@@ -4,10 +4,10 @@ import {Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View
 import {Button} from './Button';
 import {authsignal} from './authsignal';
 import {useAppContext} from './context';
-import {respondToSmsChallenge, getUserAttributes} from './cognito';
+import {respondToSmsChallenge} from './cognito';
 
 export function VerifySmsScreen({route}: any) {
-  const {setUsername, setVerifiedEmail, setNames} = useAppContext();
+  const {setUserAttributes} = useAppContext();
 
   const [code, setCode] = useState('');
 
@@ -47,17 +47,7 @@ export function VerifySmsScreen({route}: any) {
             } else {
               await respondToSmsChallenge({session, username, answer: data.token});
 
-              const {email, emailVerified, givenName, familyName} = await getUserAttributes();
-
-              if (email && emailVerified) {
-                setVerifiedEmail(email);
-              }
-
-              if (givenName && familyName) {
-                setNames(givenName, familyName);
-              }
-
-              setUsername(username);
+              setUserAttributes();
             }
           } catch (err) {
             if (err instanceof Error) {

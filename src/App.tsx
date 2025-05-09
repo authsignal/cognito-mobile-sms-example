@@ -1,6 +1,6 @@
 import {NavigationContainer} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Alert, Image, StyleSheet, TouchableOpacity} from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
@@ -25,39 +25,41 @@ function App() {
   const [givenName, setGivenName] = useState<string | undefined>();
   const [familyName, setFamilyName] = useState<string | undefined>();
 
+  const setUserAttributes = useCallback(async () => {
+    const attrs = await getUserAttributes();
+
+    if (attrs.email && attrs.emailVerified) {
+      setEmail(attrs.email);
+    }
+
+    if (attrs.givenName && attrs.familyName) {
+      setGivenName(attrs.givenName);
+      setFamilyName(attrs.familyName);
+    }
+
+    setUsername(attrs.username);
+  }, []);
+
+  const clearUserAttributes = useCallback(async () => {
+    setEmail(undefined);
+    setGivenName(undefined);
+    setFamilyName(undefined);
+    setUsername(undefined);
+  }, []);
+
   useEffect(() => {
     const initUser = async () => {
       const accessToken = await getAccessToken();
 
       if (accessToken) {
-        const attr = await getUserAttributes();
-
-        if (attr.email) {
-          setEmail(attr.email);
-        }
-
-        if (attr.givenName && attr.familyName) {
-          setGivenName(attr.givenName);
-          setFamilyName(attr.familyName);
-        }
-
-        setUsername(attr.username);
+        setUserAttributes();
       }
 
       setInitialized(true);
     };
 
     initUser();
-  }, []);
-
-  function setVerifiedEmail(value?: string) {
-    setEmail(value);
-  }
-
-  function setNames(gn?: string, fn?: string) {
-    setGivenName(gn);
-    setFamilyName(fn);
-  }
+  }, [setUserAttributes]);
 
   const appContext = useMemo(
     () => ({
@@ -65,11 +67,10 @@ function App() {
       email,
       givenName,
       familyName,
-      setUsername,
-      setVerifiedEmail,
-      setNames,
+      setUserAttributes,
+      clearUserAttributes,
     }),
-    [username, email, givenName, familyName],
+    [username, email, givenName, familyName, setUserAttributes, clearUserAttributes],
   );
 
   if (!initialized) {
@@ -110,16 +111,14 @@ function App() {
 export default App;
 
 function SignedInStack() {
-  const {email, givenName, familyName, setUsername, setVerifiedEmail, setNames} = useAppContext();
+  const {email, givenName, familyName, clearUserAttributes} = useAppContext();
 
   const onSignOutPressed = async () => {
     await clearAccessToken();
 
     await authsignal.push.removeCredential();
 
-    setUsername(undefined);
-    setVerifiedEmail(undefined);
-    setNames(undefined, undefined);
+    clearUserAttributes();
   };
 
   if (!email) {

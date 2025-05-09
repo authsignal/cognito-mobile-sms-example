@@ -3,14 +3,14 @@ import {Alert, Image, SafeAreaView, StyleSheet, Text, TextInput} from 'react-nat
 
 import {Button, GoogleButton} from './Button';
 import {authsignal} from './authsignal';
-import {initiateSmsAuth, handlePasskeyAuth, getUserAttributes, handleGoogleAuth} from './cognito';
+import {initiateSmsAuth, handlePasskeyAuth, handleGoogleAuth} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
 import {useAppContext} from './context';
 import {signInWithGoogle} from './google';
 import {initAuth} from './api';
 
 export function SignInScreen({navigation}: any) {
-  const {setUsername, setVerifiedEmail, setNames} = useAppContext();
+  const {setUserAttributes} = useAppContext();
 
   const [phoneNumber, setPhoneNumber] = useState('+64');
 
@@ -25,17 +25,7 @@ export function SignInScreen({navigation}: any) {
       try {
         await handlePasskeyAuth(data);
 
-        const attrs = await getUserAttributes();
-
-        if (attrs.email && attrs.emailVerified) {
-          setVerifiedEmail(attrs.email);
-        }
-
-        if (attrs.givenName && attrs.familyName) {
-          setNames(attrs.givenName, attrs.familyName);
-        }
-
-        setUsername(attrs.username);
+        await setUserAttributes();
       } catch (error) {
         if (error instanceof Error) {
           Alert.alert('Error', error.message);
@@ -87,17 +77,19 @@ export function SignInScreen({navigation}: any) {
       <Text style={styles.or}>OR</Text>
       <GoogleButton
         onPress={async () => {
-          const {idToken} = await signInWithGoogle();
+          try {
+            const {idToken} = await signInWithGoogle();
 
-          if (!idToken) {
-            return Alert.alert('Error', 'Google sign-in failed');
+            const {username} = await initAuth({googleIdToken: idToken});
+
+            await handleGoogleAuth({username, idToken});
+
+            await setUserAttributes();
+          } catch (err) {
+            if (err instanceof Error) {
+              Alert.alert('Error', err.message);
+            }
           }
-
-          console.log('Google ID token:', idToken);
-
-          const {username} = await initAuth({googleIdToken: idToken});
-
-          await handleGoogleAuth({username, idToken});
         }}
       />
     </SafeAreaView>

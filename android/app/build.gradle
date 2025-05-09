@@ -84,6 +84,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [
+                appAuthRedirectScheme: 'com.googleusercontent.apps.216916146829-7sh24igudsprauvu1ad3lhfrpjpj16bp'
+        ]
     }
     signingConfigs {
         debug {
