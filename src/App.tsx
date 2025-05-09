@@ -52,7 +52,7 @@ function App() {
       const accessToken = await getAccessToken();
 
       if (accessToken) {
-        setUserAttributes();
+        await setUserAttributes();
       }
 
       setInitialized(true);
