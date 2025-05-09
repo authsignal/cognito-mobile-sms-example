@@ -3,11 +3,11 @@ import {Alert, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View
 
 import {Button} from './Button';
 import {authsignal} from './authsignal';
-import {verifyEmail} from './api';
+import {finishAddingAuthenticator} from './api';
 import {useAppContext} from './context';
 
-export function VerifyEmailScreen({route}: any) {
-  const {setVerifiedEmail} = useAppContext();
+export function VerifyEmailScreen({navigation, route}: any) {
+  const {updateUserAttributes} = useAppContext();
 
   const [code, setCode] = useState('');
 
@@ -41,14 +41,13 @@ export function VerifyEmailScreen({route}: any) {
             Alert.alert('Invalid code');
           } else {
             try {
-              const verifyEmailInput = {
-                email,
-                token: data.token,
-              };
+              await finishAddingAuthenticator(data.token);
 
-              await verifyEmail(verifyEmailInput);
+              const updatedAttributes = await updateUserAttributes();
 
-              setVerifiedEmail(email);
+              if (!updatedAttributes.givenName || !updatedAttributes.familyName) {
+                navigation.navigate('Name');
+              }
             } catch (ex) {
               if (ex instanceof Error) {
                 return Alert.alert('Error', ex.message);

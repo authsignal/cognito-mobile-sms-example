@@ -12,9 +12,10 @@ import {NameScreen} from './NameScreen';
 import {SignInScreen} from './SignInScreen';
 import {VerifyEmailScreen} from './VerifyEmailScreen';
 import {VerifySmsScreen} from './VerifySmsScreen';
-import {AppContext, useAppContext} from './context';
+import {AppContext} from './context';
 import {clearAccessToken, getAccessToken, getUserAttributes} from './cognito';
 import {authsignal} from './authsignal';
+import {SmsScreen} from './SmsScreen';
 
 const Stack = createStackNavigator();
 
@@ -22,14 +23,19 @@ function App() {
   const [initialized, setInitialized] = useState(false);
   const [username, setUsername] = useState<string | undefined>();
   const [email, setEmail] = useState<string | undefined>();
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>();
   const [givenName, setGivenName] = useState<string | undefined>();
   const [familyName, setFamilyName] = useState<string | undefined>();
 
-  const setUserAttributes = useCallback(async () => {
+  const updateUserAttributes = useCallback(async () => {
     const attrs = await getUserAttributes();
 
     if (attrs.email && attrs.emailVerified) {
       setEmail(attrs.email);
+    }
+
+    if (attrs.phoneNumber && attrs.phoneNumberVerified) {
+      setPhoneNumber(attrs.phoneNumber);
     }
 
     if (attrs.givenName && attrs.familyName) {
@@ -38,6 +44,8 @@ function App() {
     }
 
     setUsername(attrs.username);
+
+    return attrs;
   }, []);
 
   const clearUserAttributes = useCallback(async () => {
@@ -52,66 +60,27 @@ function App() {
       const accessToken = await getAccessToken();
 
       if (accessToken) {
-        await setUserAttributes();
+        await updateUserAttributes();
       }
 
       setInitialized(true);
     };
 
     initUser();
-  }, [setUserAttributes]);
+  }, [updateUserAttributes]);
 
   const appContext = useMemo(
     () => ({
       username,
       email,
+      phoneNumber,
       givenName,
       familyName,
-      setUserAttributes,
+      updateUserAttributes,
       clearUserAttributes,
     }),
-    [username, email, givenName, familyName, setUserAttributes, clearUserAttributes],
+    [username, email, phoneNumber, givenName, familyName, updateUserAttributes, clearUserAttributes],
   );
-
-  if (!initialized) {
-    return null;
-  }
-
-  return (
-    <AppContext.Provider value={appContext}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{headerShown: false}}>
-          {username ? (
-            <Stack.Screen name="SignedInStack" component={SignedInStack} />
-          ) : (
-            <>
-              <Stack.Screen name="SignIn" component={SignInScreen} />
-              <Stack.Group
-                screenOptions={{
-                  headerShown: true,
-                  presentation: 'modal',
-                }}>
-                <Stack.Screen
-                  name="VerifySms"
-                  component={VerifySmsScreen}
-                  options={{
-                    title: '',
-                    headerBackTitle: 'Back',
-                  }}
-                />
-              </Stack.Group>
-            </>
-          )}
-        </Stack.Navigator>
-      </NavigationContainer>
-    </AppContext.Provider>
-  );
-}
-
-export default App;
-
-function SignedInStack() {
-  const {email, givenName, familyName, clearUserAttributes} = useAppContext();
 
   const onSignOutPressed = async () => {
     await clearAccessToken();
@@ -121,63 +90,76 @@ function SignedInStack() {
     clearUserAttributes();
   };
 
-  if (!email) {
-    return (
-      <Stack.Navigator screenOptions={{headerTitle: ''}}>
-        <Stack.Screen name="Email" component={EmailScreen} />
-        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
-      </Stack.Navigator>
-    );
+  if (!initialized) {
+    return null;
   }
 
-  if (!givenName || !familyName) {
-    return (
-      <Stack.Navigator screenOptions={{headerTitle: ''}}>
-        <Stack.Screen name="Name" component={NameScreen} />
-      </Stack.Navigator>
-    );
-  }
+  const hasAllUserAttributes = !!email && !!phoneNumber && !!givenName && !!familyName;
 
   return (
-    <Stack.Navigator>
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          // eslint-disable-next-line react/no-unstable-nested-components
-          headerTitle: () => (
-            <Image style={styles.headerTitle} resizeMode={'contain'} source={require('../images/simplify.png')} />
-          ),
-          // eslint-disable-next-line react/no-unstable-nested-components
-          headerRight: () => (
-            <TouchableOpacity
-              style={styles.headerRight}
-              onPress={async () => {
-                Alert.alert('Do you want to sign out?', '', [
-                  {
-                    text: 'Cancel',
-                    style: 'cancel',
-                    onPress: () => {},
-                  },
-                  {text: 'Sign out', onPress: onSignOutPressed},
-                ]);
+    <AppContext.Provider value={appContext}>
+      <NavigationContainer>
+        {hasAllUserAttributes ? (
+          <Stack.Navigator>
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{
+                // eslint-disable-next-line react/no-unstable-nested-components
+                headerTitle: () => (
+                  <Image style={styles.headerTitle} resizeMode={'contain'} source={require('../images/simplify.png')} />
+                ),
+                // eslint-disable-next-line react/no-unstable-nested-components
+                headerRight: () => (
+                  <TouchableOpacity
+                    style={styles.headerRight}
+                    onPress={async () => {
+                      Alert.alert('Do you want to sign out?', '', [
+                        {
+                          text: 'Cancel',
+                          style: 'cancel',
+                          onPress: () => {},
+                        },
+                        {text: 'Sign out', onPress: onSignOutPressed},
+                      ]);
+                    }}>
+                    <Icon name="user" size={18} color="#525eea" />
+                  </TouchableOpacity>
+                ),
+              }}
+            />
+            <Stack.Group
+              screenOptions={{
+                presentation: 'modal',
+                headerShown: false,
               }}>
-              <Icon name="user" size={18} color="#525eea" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
-      <Stack.Group
-        screenOptions={{
-          presentation: 'modal',
-          headerShown: false,
-        }}>
-        <Stack.Screen name="CreatePasskey" component={CreatePasskeyScreen} />
-        <Stack.Screen name="PushChallenge" component={PushChallengeScreen} />
-      </Stack.Group>
-    </Stack.Navigator>
+              <Stack.Screen name="CreatePasskey" component={CreatePasskeyScreen} />
+              <Stack.Screen name="PushChallenge" component={PushChallengeScreen} />
+            </Stack.Group>
+          </Stack.Navigator>
+        ) : (
+          <Stack.Navigator>
+            <Stack.Screen name="SignIn" component={SignInScreen} options={{headerShown: false}} />
+            <Stack.Group
+              screenOptions={{
+                headerShown: true,
+                title: '',
+                headerBackTitle: 'Back',
+              }}>
+              <Stack.Screen name="Sms" component={SmsScreen} />
+              <Stack.Screen name="VerifySms" component={VerifySmsScreen} />
+              <Stack.Screen name="Email" component={EmailScreen} />
+              <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
+              <Stack.Screen name="Name" component={NameScreen} />
+            </Stack.Group>
+          </Stack.Navigator>
+        )}
+      </NavigationContainer>
+    </AppContext.Provider>
   );
 }
+
+export default App;
 
 const styles = StyleSheet.create({
   headerTitle: {

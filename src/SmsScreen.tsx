@@ -2,34 +2,37 @@ import React, {useState} from 'react';
 import {Alert, SafeAreaView, StyleSheet, Text, TextInput} from 'react-native';
 
 import {Button} from './Button';
-import {useAppContext} from './context';
-import {updateNames} from './cognito';
+import {startAddingAuthenticator} from './api';
 
-export function NameScreen() {
-  const {updateUserAttributes} = useAppContext();
-
-  const [givenName, setGivenName] = useState('');
-  const [familyName, setFamilyName] = useState('');
+export function SmsScreen({navigation}: any) {
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>What's your first and last name?</Text>
-      <TextInput style={styles.input} placeholder="First name" onChangeText={setGivenName} value={givenName} />
-      <TextInput style={styles.input} placeholder="Last name" onChangeText={setFamilyName} value={familyName} />
+      <Text style={styles.header}>What's your phone number?</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Enter your phone number"
+        onChangeText={setPhoneNumber}
+        value={phoneNumber}
+        autoFocus={true}
+        textContentType={'telephoneNumber'}
+        autoCapitalize={'none'}
+      />
       <Button
-        disabled={givenName.length === 0 || familyName.length === 0}
+        disabled={phoneNumber.length === 0}
         onPress={async () => {
           try {
-            await updateNames(givenName, familyName);
+            await startAddingAuthenticator();
 
-            await updateUserAttributes();
+            navigation.navigate('VerifySms', {phoneNumber});
           } catch (ex) {
             if (ex instanceof Error) {
               return Alert.alert('Error', ex.message);
             }
           }
         }}>
-        Confirm
+        Continue
       </Button>
     </SafeAreaView>
   );

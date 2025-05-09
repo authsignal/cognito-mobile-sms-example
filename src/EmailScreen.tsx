@@ -2,8 +2,7 @@ import React, {useState} from 'react';
 import {Alert, SafeAreaView, StyleSheet, Text, TextInput} from 'react-native';
 
 import {Button} from './Button';
-import {addAuthenticator} from './api';
-import {authsignal} from './authsignal';
+import {startAddingAuthenticator} from './api';
 
 export function EmailScreen({navigation}: any) {
   const [email, setEmail] = useState('');
@@ -24,9 +23,7 @@ export function EmailScreen({navigation}: any) {
         disabled={email.length === 0}
         onPress={async () => {
           try {
-            const authsignalToken = await addAuthenticator();
-
-            await authsignal.setToken(authsignalToken);
+            await startAddingAuthenticator();
 
             navigation.navigate('VerifyEmail', {email});
           } catch (ex) {

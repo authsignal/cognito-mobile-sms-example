@@ -3,7 +3,7 @@ import {Alert, Image, SafeAreaView, StyleSheet, Text} from 'react-native';
 
 import {Button} from './Button';
 import {authsignal} from './authsignal';
-import {addAuthenticator} from './api';
+import {startAddingAuthenticator} from './api';
 import {useAppContext} from './context';
 
 export function CreatePasskeyScreen({navigation}: any) {
@@ -17,9 +17,7 @@ export function CreatePasskeyScreen({navigation}: any) {
 
       <Button
         onPress={async () => {
-          const authsignalToken = await addAuthenticator();
-
-          await authsignal.setToken(authsignalToken);
+          await startAddingAuthenticator();
 
           const {error} = await authsignal.passkey.signUp({
             username,

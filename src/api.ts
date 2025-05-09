@@ -1,49 +1,16 @@
 import {API_GATEWAY_ID, AWS_REGION} from '@env';
 import {getAccessToken} from './cognito';
+import {authsignal} from './authsignal';
 
 const url = `https://${API_GATEWAY_ID}.execute-api.${AWS_REGION}.amazonaws.com`;
 
-export async function addAuthenticator(): Promise<string> {
-  const accessToken = await getAccessToken();
-
-  const response = await fetch(`${url}/authenticators`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  }).then(res => res.json());
-
-  return response.authsignalToken;
-}
-
-interface VerifyEmailInput {
-  email: string;
-  token: string;
-}
-
-export async function verifyEmail(input: VerifyEmailInput) {
-  const accessToken = await getAccessToken();
-
-  const response = await fetch(`${url}/authenticators/email/verify`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(input),
-  }).then(res => res.json());
-
-  if (response?.error) {
-    throw new Error(`Error verifying email: ${response.error}`);
-  }
-}
-
-interface InitAuthInput {
+interface StartSignInInput {
   phoneNumber?: string;
   googleIdToken?: string;
 }
 
-export async function initAuth(input: InitAuthInput) {
-  const response = await fetch(`${url}/init`, {
+export async function startSignIn(input: StartSignInInput) {
+  const response = await fetch(`${url}/start-sign-in`, {
     method: 'POST',
     body: JSON.stringify(input),
   }).then(res => res.json());
@@ -53,4 +20,33 @@ export async function initAuth(input: InitAuthInput) {
   }
 
   return response;
+}
+
+export async function startAddingAuthenticator() {
+  const accessToken = await getAccessToken();
+
+  const response = await fetch(`${url}/authenticators`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }).then(res => res.json());
+
+  await authsignal.setToken(response.authsignalToken);
+}
+
+export async function finishAddingAuthenticator(token: string) {
+  const accessToken = await getAccessToken();
+
+  const response = await fetch(`${url}/authenticators/verify`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({token}),
+  }).then(res => res.json());
+
+  if (response?.error) {
+    throw new Error(`Error verifying authenticator: ${response.error}`);
+  }
 }

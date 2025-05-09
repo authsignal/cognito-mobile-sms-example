@@ -12,15 +12,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const cognito = new CognitoIdentityProviderClient({region: AWS_REGION});
 
-interface InitiateAuthResponse {
-  session: any;
-}
-
-interface InitiateSmsAuthResponse extends InitiateAuthResponse {
-  token: string;
-  isEnrolled: boolean;
-}
-
 async function initiateAuth(username: string) {
   const initiateAuthCommand = new InitiateAuthCommand({
     ClientId: USER_POOL_CLIENT_ID,
@@ -55,7 +46,7 @@ export async function respondToAuthChallenge({session, username, answer, clientM
   return await cognito.send(respondToAuthChallengeCommand);
 }
 
-export async function initiateSmsAuth(username: string): Promise<InitiateSmsAuthResponse> {
+export async function initiateSmsAuth(username: string) {
   const provideAuthParamsOutput = await initiateAuth(username);
 
   const challengeResponse = await respondToAuthChallenge({
@@ -66,7 +57,7 @@ export async function initiateSmsAuth(username: string): Promise<InitiateSmsAuth
   });
 
   const token = challengeResponse.ChallengeParameters?.token;
-  const isEnrolled = challengeResponse.ChallengeParameters?.isEnrolled === 'true';
+  const phoneNumberVerified = challengeResponse.ChallengeParameters?.phoneNumberVerified === 'true';
   const session = challengeResponse.Session;
 
   if (!token) {
@@ -76,7 +67,7 @@ export async function initiateSmsAuth(username: string): Promise<InitiateSmsAuth
   return {
     session,
     token,
-    isEnrolled,
+    phoneNumberVerified,
   };
 }
 
@@ -223,33 +214,31 @@ export async function updateNames(givenName: string, familyName: string) {
   await cognito.send(updateUserAttributesCommand);
 }
 
-interface UserAttributes {
+export interface CognitoUserAttributes {
   username?: string;
-  userId?: string;
   phoneNumber?: string;
+  phoneNumberVerified: boolean;
   email?: string;
   emailVerified: boolean;
   givenName?: string;
   familyName?: string;
 }
 
-export async function getUserAttributes(): Promise<UserAttributes> {
+export async function getUserAttributes(): Promise<CognitoUserAttributes> {
   const accessToken = await getAccessToken();
 
   if (!accessToken) {
     throw new Error('No access token found');
   }
 
-  const getUserCommand = new GetUserCommand({
-    AccessToken: accessToken,
-  });
+  const getUserCommand = new GetUserCommand({AccessToken: accessToken});
 
   const getUserOutput = await cognito.send(getUserCommand);
 
   const username = getUserOutput.Username;
-
-  const userId = getUserOutput.UserAttributes?.find(attr => attr.Name === 'sub')?.Value;
   const phoneNumber = getUserOutput.UserAttributes?.find(attr => attr.Name === 'phone_number')?.Value;
+  const phoneNumberVerified =
+    getUserOutput.UserAttributes?.find(attr => attr.Name === 'phone_number_verified')?.Value === 'true';
   const email = getUserOutput.UserAttributes?.find(attr => attr.Name === 'email')?.Value;
   const emailVerified = getUserOutput.UserAttributes?.find(attr => attr.Name === 'email_verified')?.Value === 'true';
   const givenName = getUserOutput.UserAttributes?.find(attr => attr.Name === 'given_name')?.Value;
@@ -257,8 +246,8 @@ export async function getUserAttributes(): Promise<UserAttributes> {
 
   return {
     username,
-    userId,
     phoneNumber,
+    phoneNumberVerified,
     email,
     emailVerified,
     givenName,

@@ -5,21 +5,22 @@ import {Button} from './Button';
 import {authsignal} from './authsignal';
 import {useAppContext} from './context';
 import {respondToSmsChallenge} from './cognito';
+import {finishAddingAuthenticator} from './api';
 
-export function VerifySmsScreen({route}: any) {
-  const {setUserAttributes} = useAppContext();
+export function VerifySmsScreen({navigation, route}: any) {
+  const {updateUserAttributes} = useAppContext();
 
   const [code, setCode] = useState('');
 
-  const {username, phoneNumber, isEnrolled, session} = route.params;
+  const {username, phoneNumber, phoneNumberVerified, session} = route.params;
 
   const sendSms = useCallback(async () => {
-    if (isEnrolled) {
+    if (phoneNumberVerified) {
       await authsignal.sms.challenge();
     } else {
       await authsignal.sms.enroll({phoneNumber});
     }
-  }, [phoneNumber, isEnrolled]);
+  }, [phoneNumber, phoneNumberVerified]);
 
   useEffect(() => {
     sendSms();
@@ -45,9 +46,21 @@ export function VerifySmsScreen({route}: any) {
             if (error || !data?.token) {
               Alert.alert('Invalid code');
             } else {
-              await respondToSmsChallenge({session, username, answer: data.token});
+              if (session) {
+                // If a Cognito session is present we're signing the user in via SMS
+                // In this case we need to respond to the Cognito challenge
+                await respondToSmsChallenge({session, username, answer: data.token});
+              } else {
+                // Otherwise the user is already signed in via Google
+                // In this case we need to finish verifying the SMS authenticator
+                await finishAddingAuthenticator(data.token);
+              }
 
-              setUserAttributes();
+              const updatedAttributes = await updateUserAttributes();
+
+              if (!updatedAttributes.emailVerified) {
+                navigation.navigate('Email');
+              }
             }
           } catch (err) {
             if (err instanceof Error) {

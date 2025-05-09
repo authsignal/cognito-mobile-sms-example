@@ -7,16 +7,16 @@ import {initiateSmsAuth, handlePasskeyAuth, handleGoogleAuth} from './cognito';
 import {ErrorCode} from 'react-native-authsignal';
 import {useAppContext} from './context';
 import {signInWithGoogle} from './google';
-import {initAuth} from './api';
+import {startSignIn} from './api';
 
 export function SignInScreen({navigation}: any) {
-  const {setUserAttributes} = useAppContext();
+  const {updateUserAttributes} = useAppContext();
 
   const [phoneNumber, setPhoneNumber] = useState('+64');
 
   useEffect(() => {
     async function signInWithPasskey() {
-      const {data, errorCode} = await authsignal.passkey.signIn({action: 'cognitoPasskeyAuth'});
+      const {data, errorCode} = await authsignal.passkey.signIn({action: 'cognitoAuth'});
 
       if (errorCode === ErrorCode.user_canceled || errorCode === ErrorCode.no_credential || !data) {
         return;
@@ -25,7 +25,7 @@ export function SignInScreen({navigation}: any) {
       try {
         await handlePasskeyAuth(data);
 
-        await setUserAttributes();
+        await updateUserAttributes();
       } catch (error) {
         if (error instanceof Error) {
           Alert.alert('Error', error.message);
@@ -54,10 +54,10 @@ export function SignInScreen({navigation}: any) {
       />
       <Button
         onPress={async () => {
-          const {username} = await initAuth({phoneNumber});
+          const {username} = await startSignIn({phoneNumber});
 
           try {
-            const {session, token, isEnrolled} = await initiateSmsAuth(username);
+            const {session, token, phoneNumberVerified} = await initiateSmsAuth(username);
 
             if (!token) {
               throw new Error('No Authsignal token returned from Create Auth Challenge lambda');
@@ -65,7 +65,7 @@ export function SignInScreen({navigation}: any) {
 
             await authsignal.setToken(token);
 
-            navigation.navigate('VerifySms', {username, phoneNumber, isEnrolled, session});
+            navigation.navigate('VerifySms', {username, phoneNumber, phoneNumberVerified, session});
           } catch (err) {
             if (err instanceof Error) {
               Alert.alert('Invalid credentials', err.message);
@@ -80,11 +80,11 @@ export function SignInScreen({navigation}: any) {
           try {
             const {idToken} = await signInWithGoogle();
 
-            const {username} = await initAuth({googleIdToken: idToken});
+            const {username} = await startSignIn({googleIdToken: idToken});
 
             await handleGoogleAuth({username, idToken});
 
-            await setUserAttributes();
+            await updateUserAttributes();
           } catch (err) {
             if (err instanceof Error) {
               Alert.alert('Error', err.message);
